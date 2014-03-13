@@ -109,7 +109,7 @@ remove_dotgit() {
 
 # Old versions
 if [ -d ${CRAN}/Archive/${pkg} ]; then
-    files=( $(find ${CRAN}/Archive/${pkg} -type f) )
+    files=( $(find ${CRAN}/Archive/${pkg} -type f -name "*.tar.gz") )
 else 
     files=()
 fi

@@ -64,6 +64,12 @@ get_author() {
     if echo ${author} | grep -q '[^ ]<'; then
 	author=$(echo $author | sed 's/</ </')
     fi
+    if echo ${author} | grep -q -v '<'; then
+	author=$(echo $author | sed 's/[(]/</' | sed 's/[)]/>/')
+    fi
+    if echo ${author} | grep -q -v '<'; then
+	author=$(echo $author | sed 's/[ ]\([^ ]*@[^ ]*\)/ <\1>/')
+    fi
     if [ -z "$author" ] || echo "$author" | grep -q -v '@'; then
 	author="Unknown author <unknown@unknown>"
     fi

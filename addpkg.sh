@@ -11,7 +11,8 @@ fi
 
 pkg=$1
 
-CRAN=/Users/csardi/CRAN/contrib
+CRAN=/Users/csardi/rpkg/CRAN/contrib
+github=/Users/csardi/rpkg/github
 
 export PATH=/usr/local/bin:$PATH
 export LC_CTYPE=C 
@@ -142,7 +143,7 @@ rest=$(echo "$ov" | tail +2)
 
 set -e
 
-cd ${CRAN}/..
+cd ${github}
 
 # Copy over first version
 rm -rf ${pkg} ${pkg}*.tar.gz

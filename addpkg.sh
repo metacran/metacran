@@ -164,7 +164,8 @@ if [ ! -z "$rest" ]; then
 	get_date
 	get_author
 	if git tag | grep -q "^${ver}"'$'; then ver="${ver}-dup"; fi
-	git commit -m "version $ver" --date "$date" --author "$author"
+	git commit --allow-empty -m "version $ver" \
+	    --date "$date" --author "$author"
 	git tag "$ver"
 	cd ..
 	rm ${pkg}_*.tar.gz

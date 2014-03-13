@@ -107,6 +107,21 @@ remove_dotgit() {
     find $1 -name .git -exec rm -rf \{\} \;
 }
 
+untar_it() {
+    local file="$1"
+    local real=$(echo "$1" | sed 's/_.*$//')
+    local td=`mktemp -d -t XXXXXXXX-rpkg`
+    (
+        cp $file "$td"
+	cd "$td"
+	tar xzf *
+        rm $file
+	mv `ls` "$real"
+    )
+    mv "${td}/${real}" .
+    rm -rf "$td"
+}
+
 # Old versions
 if [ -d ${CRAN}/Archive/${pkg} ]; then
     files=( $(find ${CRAN}/Archive/${pkg} -type f -name "*.tar.gz") )
@@ -132,7 +147,7 @@ cd ${CRAN}/..
 # Copy over first version
 rm -rf ${pkg} ${pkg}*.tar.gz
 cp ${first[1]} .
-tar xzf ${pkg}_*.tar.gz
+untar_it "${pkg}_*.tar.gz"
 remove_dotgit "${pkg}"
 cd ${pkg}
 
@@ -154,7 +169,7 @@ if [ ! -z "$rest" ]; then
 	mv ${pkg}/.git ./${pkg}-git
 	rm -rf ${pkg} ${pkg}*.tar.gz    
 	cp ${file} .
-	tar xzf ${pkg}_*.tar.gz
+	untar_it "${pkg}_*.tar.gz"
 	remove_dotgit "${pkg}"
 	mv ./${pkg}-git ${pkg}/.git
 	cd ${pkg}

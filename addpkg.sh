@@ -102,6 +102,11 @@ update_desc() {
     github "${data}" "repos/rpkg/${name}" "PATCH"
 }
 
+remove_dotgit() {
+    if [ "$1" == "."]; then exit 3; fi
+    find $1 -name .git -exec rm -rf \{\} \;
+}
+
 # Old versions
 if [ -d ${CRAN}/Archive/${pkg} ]; then
     files=( $(find ${CRAN}/Archive/${pkg} -type f) )
@@ -128,6 +133,7 @@ cd ${CRAN}/..
 rm -rf ${pkg} ${pkg}*.tar.gz
 cp ${first[1]} .
 tar xzf ${pkg}_*.tar.gz
+remove_dotgit "${pkg}"
 cd ${pkg}
 
 # Init repo with first version
@@ -149,6 +155,7 @@ if [ ! -z "$rest" ]; then
 	rm -rf ${pkg} ${pkg}*.tar.gz    
 	cp ${file} .
 	tar xzf ${pkg}_*.tar.gz
+	remove_dotgit "${pkg}"
 	mv ./${pkg}-git ${pkg}/.git
 	cd ${pkg}
 	git status

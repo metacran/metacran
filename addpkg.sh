@@ -166,7 +166,7 @@ if [ ! -z "$rest" ]; then
 	if git tag | grep -q "^${ver}"'$'; then ver="${ver}-dup"; fi
 	git commit --allow-empty -m "version $ver" \
 	    --date "$date" --author "$author"
-	git tag "$ver"
+	git tag "$ver" || true
 	cd ..
 	rm ${pkg}_*.tar.gz
     done <<< "$rest"

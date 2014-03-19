@@ -157,7 +157,8 @@ git init .
 git add -A .
 get_date
 get_author
-git commit -m "version ${first[0]}" --date "$date" --author "$author"
+GIT_COMMITTER_DATE="$date" git commit -m "version ${first[0]}" \
+    --date "$date" --author "$author"
 git tag ${first[0]}
 cd ..
 rm ${pkg}_*.tar.gz
@@ -180,7 +181,7 @@ if [ ! -z "$rest" ]; then
 	get_date
 	get_author
 	if git tag | grep -q "^${ver}"'$'; then ver="${ver}-dup"; fi
-	git commit --allow-empty -m "version $ver" \
+	GIT_COMMITTER_DATE="$date" git commit --allow-empty -m "version $ver" \
 	    --date "$date" --author "$author"
 	git tag "$ver" || true
 	cd ..

@@ -11,8 +11,8 @@ fi
 
 pkg=$1
 
-CRAN=/Users/csardi/rpkg/CRAN/contrib
-github=/Users/csardi/rpkg/github
+CRAN=/Users/csardi/cran/CRAN/contrib
+github=/Users/csardi/cran/github
 
 export PATH=/usr/local/bin:$PATH
 export LC_CTYPE=C 
@@ -100,7 +100,7 @@ update_desc() {
     local name=$1 desc=$2 homepage=$3
     get_token
     data="{ \"name\": \"${name}\", \"description\": \"${desc}\", \"homepage\": \"${homepage}\" } "
-    github "${data}" "repos/rpkg/${name}" "PATCH"
+    github "${data}" "repos/cran/${name}" "PATCH"
 }
 
 remove_dotgit() {
@@ -194,10 +194,10 @@ cd ${pkg}
 get_desc
 get_homepage
 
-hub create rpkg/${pkg} -d "$desc" -h "$homepage"
+hub create cran/${pkg} -d "$desc" -h "$homepage"
 git push origin master
 git push --tags
 
 # Diable issue tracking, wiki
 github " { \"name\": \"${pkg}\", \"has_issues\": false, \"has_wiki\": false }" \
-    "repos/rpkg/${pkg}" "PATCH"
+    "repos/cran/${pkg}" "PATCH"

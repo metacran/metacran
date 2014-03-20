@@ -1,8 +1,7 @@
-#!/bin/sh -x
+#!/bin/sh
 
 ## TODO: 
 ## - github disconnects
-## - continue
 
 if [[ $# -eq 0 ]] ; then
     echo 'Package not specified.'
@@ -104,7 +103,7 @@ update_desc() {
 }
 
 remove_dotgit() {
-    if [ "$1" == "."]; then exit 3; fi
+    if [ "$1" == "." ]; then exit 3; fi
     find $1 -name .git -exec rm -rf \{\} \;
 }
 
@@ -123,82 +122,129 @@ untar_it() {
     rm -rf "$td"
 }
 
-# Old versions
-if [ -d ${CRAN}/Archive/${pkg} ]; then
-    files=( $(find ${CRAN}/Archive/${pkg} -type f -name "*.tar.gz") )
-else 
-    files=()
-fi
+get_versions() {
+    local files versions ov
 
-# Latest version
-files=( "${files[@]}" $(ls ${CRAN}/${pkg}_*) )
+    # Old versions
+    if [ -d ${CRAN}/Archive/${pkg} ]; then
+       files=( $(find ${CRAN}/Archive/${pkg} -type f -name "*.tar.gz") )
+    else   
+       files=()
+    fi
 
-versions=( $(echo "${files[@]}"  | tr ' ' '\n' | sed 's/.tar.gz$//' |
-             sed 's/^.*_//') )
+    # Latest version
+    files=( "${files[@]}" $(ls ${CRAN}/${pkg}_*) )
 
-ov=$(echo "${files[@]}" "${versions[@]}" | Rscript sortvers.R)
+    versions=( $(echo "${files[@]}"  | tr ' ' '\n' | sed 's/.tar.gz$//' |
+                 sed 's/^.*_//') )
 
-first=( $(echo "$ov" | head -1) )
-rest=$(echo "$ov" | tail +2)
+    rest=$(echo "${files[@]}" "${versions[@]}" | Rscript sortvers.R)
+
+    first=( $(echo "$rest" | head -1) )
+}
+
+check_pkg_dir() {
+    (
+	if [ ! -d "$pkg" ]; then return 1; fi
+    	cd $pkg
+    	if [ ! -d .git ]; then return 2; fi
+    	if ! git log 2>/dev/null >/dev/null; then return 3; fi
+    	return 0
+     )
+}
+
+add_if_new() {
+     local pkg=$1 file=$2 ver=$3
+     if (cd ${pkg}; git log --format=oneline | sed 's/^.*version[ ]*//' | \
+	    grep -qFx "$ver"); then 
+         echo "$ver exists"
+         if [ "$adding" == 1 ]; then 
+             echo "$pkg version number error" ; exit 25; 
+         fi
+         return 0 
+     fi
+     adding=1
+     echo "adding $ver"
+     (
+       mv ${pkg}/.git ./${pkg}-git
+       rm -rf ${pkg} ${pkg}*.tar.gz    
+       cp ${file} .
+       untar_it "${pkg}_*.tar.gz"
+       remove_dotgit "${pkg}"
+       mv ./${pkg}-git ${pkg}/.git
+       cd ${pkg}
+       git status
+       git add -A .
+       git status
+       get_date
+       get_author
+       if git tag | grep -q "^${ver}"'$'; then ver="${ver}-dup"; fi
+       GIT_COMMITTER_DATE="$date" git commit --allow-empty \
+          -m "version $ver" --date "$date" --author "$author"
+       git tag "$ver" || true
+       cd ..
+       rm ${pkg}_*.tar.gz
+     )
+}
+
+####################################################
+# Main program starts here
+
+get_versions
 
 set -e
 
 cd ${github}
 
-# Copy over first version
-rm -rf ${pkg} ${pkg}*.tar.gz
-cp ${first[1]} .
-untar_it "${pkg}_*.tar.gz"
-remove_dotgit "${pkg}"
-cd ${pkg}
+echo "======= $pkg"
 
-# Init repo with first version
-git init .
-git add -A .
-get_date
-get_author
-GIT_COMMITTER_DATE="$date" git commit -m "version ${first[0]}" \
-    --date "$date" --author "$author"
-git tag ${first[0]}
-cd ..
-rm ${pkg}_*.tar.gz
+new_package=0
+if ! check_pkg_dir; then 
+    # Copy over first version
+    new_package=1
+    rm -rf ${pkg} ${pkg}*.tar.gz
+    cp ${first[1]} .
+    untar_it "${pkg}_*.tar.gz"
+    remove_dotgit "${pkg}"
+    cd ${pkg}
+
+    # Init repo with first version
+    git init .
+    git add -A .
+    get_date
+    get_author
+    GIT_COMMITTER_DATE="$date" git commit -m "version ${first[0]}" \
+        --date "$date" --author "$author"
+    git tag ${first[0]}
+    cd ..
+    rm ${pkg}_*.tar.gz
+fi
 
 # And add the rest, if any
-if [ ! -z "$rest" ]; then
+if [ ! -z "$rest" ]; then    
     while read -r line; do
 	ver=$(echo $line | cut -d" " -f1)
 	file=$(echo $line | cut -d" " -f2)
-	mv ${pkg}/.git ./${pkg}-git
-	rm -rf ${pkg} ${pkg}*.tar.gz    
-	cp ${file} .
-	untar_it "${pkg}_*.tar.gz"
-	remove_dotgit "${pkg}"
-	mv ./${pkg}-git ${pkg}/.git
-	cd ${pkg}
-	git status
-	git add -A .
-	git status
-	get_date
-	get_author
-	if git tag | grep -q "^${ver}"'$'; then ver="${ver}-dup"; fi
-	GIT_COMMITTER_DATE="$date" git commit --allow-empty -m "version $ver" \
-	    --date "$date" --author "$author"
-	git tag "$ver" || true
-	cd ..
-	rm ${pkg}_*.tar.gz
+	add_if_new "$pkg" "$file" "$ver"
     done <<< "$rest"
 fi
 
 # And put the whole stuff on github
-cd ${pkg}
-
-get_desc
-get_homepage
-
-hub create cran/${pkg} -d "$desc" -h "$homepage"
-git push origin master
-git push --tags
-
-# Diable issue tracking, wiki
-github " { \"name\": \"${pkg}\", \"has_issues\": false, \"has_wiki\": false }" \
+if [ "$new_package" == "1" ]; then
+  (
+  cd ${pkg}
+  get_desc
+  get_homepage
+  hub create cran/${pkg} -d "$desc" -h "$homepage"
+  github " { \"name\": \"${pkg}\", \"has_issues\": false, \"has_wiki\": false }" \
     "repos/cran/${pkg}" "PATCH"
+  )
+fi
+
+if [ "$adding" == "1" ]; then
+   (
+    cd ${pkg} 
+    git push origin master
+    git push --tags
+   )
+fi

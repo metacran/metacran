@@ -241,7 +241,7 @@ if [ "$new_package" == "1" ]; then
   )
 fi
 
-if [ "$adding" == "1" ]; then
+if [ "$adding" == "1" -o "$new_package" == "1" ]; then
    (
     cd ${pkg} 
     git push origin master

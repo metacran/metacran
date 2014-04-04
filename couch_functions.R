@@ -10,6 +10,12 @@ dep_fields <- c("Depends", "Imports", "Suggests", "Enhances", "LinkingTo")
 library(jsonlite)
 library(httr)
 
+## To sort version numbers
+
+`==.version` <- function(x, y) compareVersion(x, y) == 0
+`>.version`  <- function(x, y) compareVersion(x, y) == 1
+`[.version`  <- function(x, i) structure(unclass(x)[i], class="version")
+
 ## Parse releases
 parse_releases <- function(reldir) {
   rf <- list.files(reldir, full.names=TRUE)
@@ -64,20 +70,6 @@ add_releases <- function(rec, releases) {
   }
 }
 
-## Add archival information to list
-add_archived <- function(rec, archived) {
-  pkg <- rec$Package
-  version <- rec$Version
-  if (is.null(pkg)) { pkg <- rec$Bundle }
-  if (is.null(pkg) || !pkg %in% archived$package) {
-    NULL
-  } else {
-    w <- which(archived$package == pkg)
-    list(archived=unbox(TRUE), date=unbox(archived[w, "date"]),
-         comment=unbox(archived[w, "comment"]))
-  }
-}
-
 set_encoding <- function(str) {
   if (! is.na(str["Encoding"])) {
     Encoding(str) <- str['Encoding']
@@ -87,10 +79,27 @@ set_encoding <- function(str) {
   str
 }
 
+normalize_date <- function(date) {
+  cmd <- paste("NODE_PATH=/usr/local/lib/node_modules/ node -e \"var moment=require('moment'); console.log(moment(process.argv[1]).format());\" ", "\"",
+               date, "\"", sep="")
+  system(cmd, intern=TRUE)
+}
+
+add_date <- function(rec) {
+  dd <- if ("Date/Publication" %in% names(rec)) {
+    rec[["Date/Publication"]]
+  } else if ("Packaged" %in% names(rec)) {
+    sub(";.*$", "", rec[["Packaged"]])
+  } else {
+    rec[["Date"]]
+  }
+  normalize_date(dd)
+}
+
 ## Convert a DESCRIPTION record to JSON
 ## Usage: to_couch(allpkg[1,])
 
-to_couch <- function(rec, pretty=FALSE) {
+to_couch_version <- function(rec) {
   rec <- set_encoding(rec)
   rec <- na.omit(rec)
   rec <- as.list(rec)
@@ -99,12 +108,77 @@ to_couch <- function(rec, pretty=FALSE) {
     rec[[f]] <- parse_dep_field(rec[[f]])
   }
   rec$releases <- add_releases(rec, releases)
-  rec$archived <- add_archived(rec, archived)
-  toJSON(rec, pretty=pretty)
+  rec$date <- unbox(add_date(rec))
+  rec
 }
 
-couch_add_docs <- function(json) {
-  id <- fromJSON(content(GET(paste0(url, "/_uuids"))))$uuids
+## Add archival information to list
+add_archived <- function(frec, archived) {
+  pkg <- frec$name
+  w <- which(archived$package == pkg)
+  if (length(w) != 0) {
+    frec$archived <- unbox(TRUE)
+    frec$archived_date <- unbox(normalize_date(archived[w, "date"]))
+    frec$archived_comment <- unbox(archived[w, "comment"])
+    frec$timeline[["archived"]] <- frec$archived_date
+  } else {
+    frec$archived <- unbox(FALSE)
+  }
+  frec
+}
+
+## Add latest title
+add_latest_title <- function(frec) {
+  tit <- frec$versions[[frec[["latest"]]]]$Title
+  tit
+}
+
+## Add timeline
+add_timeline <- function(frec) {
+  dates <- lapply(sapply(frec$versions, "[[", "date"), unbox)
+  structure(dates, names=names(frec$versions))
+}
+
+to_couch_from_matrix <- function(pkg, recs, pretty=FALSE) {
+  frec <- list()
+
+  ## Simple fields, workaround for VR
+  frec[["_id"]] <- unbox(pkg)
+  frec[["name"]] <- unbox(pkg)
+
+  ## Versions
+  frec$versions <- lapply(1:nrow(recs), function(r) {
+    to_couch_version(recs[r, ])
+  })
+  names(frec$versions) <- recs[, "Version"]
+
+  ## Latest version
+  origversions <- versions <- sapply(frec$versions, "[[", "Version")
+  versions <- gsub("[^0-9]+", "-", versions)
+  versions <- sub("^[^0-9]+", "", versions)
+  class(versions) <- "version"
+  frec[["latest"]] <- unbox(unclass(tail(sort(origversions), 1)))
+
+  ## Latest title
+  frec$title <- add_latest_title(frec)
+
+  ## Timeline
+  frec$timeline <- add_timeline(frec)
+  
+  ## Archived or not? Adds it to timeline as well
+  frec <- add_archived(frec, archived)
+  
+  toJSON(frec, pretty=pretty)
+}
+
+to_couch <- function(all, pkg, pretty=FALSE) {
+  recs <- all[which(all[,"Package"] == pkg | all[, "Bundle"] == pkg),,
+              drop=FALSE]
+  if (nrow(recs) == 0) { stop("No such package") }
+  to_couch_from_matrix(pkg, recs, pretty=pretty)
+}
+
+couch_add_docs <- function(id, json) {
   rep <- PUT(paste0(url, "/", db, "/", id), body=json)
   rep
 }

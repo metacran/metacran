@@ -182,3 +182,17 @@ couch_add_docs <- function(id, json) {
   rep <- PUT(paste0(url, "/", db, "/", id), body=json)
   rep
 }
+
+couch_add_releases <- function() {
+  rel <- read.delim("releases.conf", skip=1, header=FALSE, 
+                    stringsAsFactors=FALSE)
+  rel <- rel[ -nrow(rel), ]
+  for (i in 1:nrow(rel)) {
+    id <- rel[i, 1]
+    date <- normalize_date(rel[i,2])
+    json <- toJSON(list("_id"=unbox(id), date=unbox(date), 
+    	                type=unbox("release")))
+    res <- PUT(paste0(url, "/", db, "/", id), body=json)
+    print(res)
+  }
+}

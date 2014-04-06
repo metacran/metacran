@@ -70,4 +70,8 @@ res <- lapply(pkgs, function(p) {
   res
 })
 
+##################################################################
+## Releases
 
+source("couch_functions.R")
+couch_add_releases()

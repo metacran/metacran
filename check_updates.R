@@ -1,6 +1,11 @@
 
-old <- read.dcf("PACKAGES.old")[, c("Package", "Version")]
-new <- read.dcf("PACKAGES.new")[, c("Package", "Version")]
+args <- commandArgs(trailingOnly=TRUE)
+if (length(args) != 2 || !file.exists(args[1]) || !file.exists(args[2])) {
+  stop("Invalid argument(s), need PACKAGES files")
+}
+
+old <- read.dcf(args[1])[, c("Package", "Version")]
+new <- read.dcf(args[2])[, c("Package", "Version")]
 
 newpkg <- setdiff(new[, "Package"], old[, "Package"])
 midx <- match(new[, "Package"], old[, "Package"])

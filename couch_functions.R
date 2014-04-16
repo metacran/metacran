@@ -157,7 +157,7 @@ to_couch_from_matrix <- function(pkg, recs, pretty=FALSE) {
   versions <- gsub("[^0-9]+", "-", versions)
   versions <- sub("^[^0-9]+", "", versions)
   class(versions) <- "version"
-  frec[["latest"]] <- unbox(unclass(tail(sort(origversions), 1)))
+  frec[["latest"]] <- unbox(unclass(tail(origversions[order(versions)], 1)))
 
   ## Latest title
   frec$title <- add_latest_title(frec)

@@ -3,8 +3,13 @@
 
 ## Some configuration
 
-url <- "http://127.0.0.1:5984"
 db <- "cran"
+user <- "csardi"
+pass <- scan("couch_pass.txt", what="", quiet=TRUE)
+
+## url <- "http://127.0.0.1:5984"
+url <- "http://107.170.126.171:5984"
+
 dep_fields <- c("Depends", "Imports", "Suggests", "Enhances", "LinkingTo")
 
 library(jsonlite)
@@ -195,4 +200,87 @@ couch_add_releases <- function() {
     res <- PUT(paste0(url, "/", db, "/", id), body=json)
     print(res)
   }
+}
+
+escape_doc <- function(doc) {
+  doc[['versions']] <- lapply(doc[['versions']], function(ver) {
+    comp <- c("releases", dep_fields)
+    mdep <- intersect(names(ver), dep_fields)
+    nn <- setdiff(names(ver), comp)
+    ver[nn] <- lapply(ver[nn], unbox)
+    ver[["releases"]] <- unlist(ver[["releases"]])
+    ver[mdep] <- lapply(ver[mdep], function(xx) {
+      lapply(xx, unbox)
+    })
+    ver
+  })
+  doc[["timeline"]] <- lapply(doc[["timeline"]], unbox)
+
+  ub <- setdiff(names(doc), c("versions", "timeline"))
+  doc[ub] <- lapply(doc[ub], unbox)
+  doc
+}
+
+from_couch <- function(pkg) {
+  json <- content(GET(paste0(url, "/", db, "/", pkg)), as="text")
+  robj <- fromJSON(json, simplifyVector=FALSE)
+  if ("error" %in% names(robj)) {
+    list("_id"=unbox(pkg), "name"=unbox(pkg), "archived"=unbox(FALSE))
+  } else {
+    escape_doc(robj)
+  }
+}
+
+update_couch <- function(pkg, pretty=FALSE) {
+  robj <- from_couch(pkg)
+  overs <- names(robj$timeline)
+  nvers <- system(intern=TRUE, paste0("cd github/", pkg,
+                    "; git log --format='%s' | sed 's/version[ ]*//'"))
+  add <- setdiff(nvers, overs)
+  for (v in add) {
+    desc <- system(intern=TRUE, paste0("cd github/", pkg,
+                     "; git show ", v, ":DESCRIPTION"))
+    pdesc <- read.dcf(textConnection(desc))[1,]
+    robj$versions[[v]] <- to_couch_version(pdesc)
+  }
+
+  origversions <- versions <- sapply(robj$versions, "[[", "Version")
+  versions <- gsub("[^0-9]+", "-", versions)
+  versions <- sub("^[^0-9]+", "", versions)
+  class(versions) <- "version"
+  robj[["latest"]] <- unbox(unclass(tail(origversions[order(versions)], 1)))
+
+  ## Latest title
+  robj$title <- add_latest_title(robj)
+
+  ## Timeline
+  robj$timeline <- add_timeline(robj)
+
+  ## Not archives, it was just updated....
+  robj$archived <- unbox(FALSE)
+  robj$archived_date <- NULL
+  robj$archived_comment <- NULL
+  
+  ## Add to/update DB
+  json <- toJSON(robj, pretty=pretty)
+  res <- PUT(paste0(url, "/", db, "/", pkg), body=json,
+             authenticate(user, pass, type="basic"))
+  stop_for_status(res)
+}
+
+couch_update_packages <- function(pkgs, pretty=FALSE) {
+  sapply(pkgs, update_couch, pretty=pretty)
+}
+
+archive_couch <- function(pkg, pretty=FALSE) {
+  robj <- from_couch(pkg)
+  robj$archived <- unbox(TRUE)
+  json <- toJSON(robj, pretty=pretty)
+  # res <- PUT(paste0(url, "/", db, "/", pkg), body=json)
+  # res
+  paste(pkg, "OK")  
+}
+
+couch_archive_packages <- function(pkgs) {
+  sapply(pkgs, archive_couch, pretty=FALSE)
 }

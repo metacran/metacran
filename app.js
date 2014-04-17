@@ -20,6 +20,8 @@ var couchapp = require('couchapp')
 // - events, package events, ordered by event date
 // - releases, R releases, ordered by date
 // - release, packages and their versions for each R release
+// - releasedesc, packages and their versions for each R release,
+//   include more data in addition to the version number
 
 // Lists
 // =====
@@ -32,6 +34,7 @@ var couchapp = require('couchapp')
 // - id, put rows in an dictionary, use key as key
 // - id1, put rows in an dictionary, use key[1] as key
 // - il, put rows in a list
+// - desc, minimal description of a package version
 
 // API
 // ===
@@ -44,12 +47,16 @@ ddoc = {
     , rewrites: 
     [ { from: "/", to: "../.." }
     , { from: '/-/all', to: '_list/id/active' }
+    , { from: '/-/desc', to: '_list/desc/active' }
     , { from: '/-/allall', to: '_list/id/packages' }
     , { from: '/-/pkgreleases', to: '_list/il/pkgreleases' }
     , { from: '/-/archivals', to: '_list/il/archivals' }
     , { from: '/-/events', to: '_list/il/events' }
     , { from: '/-/releases', to: '_list/il/releases' }
     , { from: '/-/release/:version', to: '_list/id1/release', 
+        query: { "start_key":[":version"],
+		 "end_key":[":version",{}] } }
+    , { from: '/-/releasedesc/:version', to: '_list/id1/releasedesc',
         query: { "start_key":[":version"], 
 		 "end_key":[":version",{}] } }
     , { from: '/:pkg', to: '_show/package/:pkg' }
@@ -136,6 +143,20 @@ ddoc.views.release = {
     }
 }
 
+ddoc.views.releasedesc = {
+    map: function(doc) {
+	if (doc.type && doc.type != "package") return
+	if (!doc.versions) return
+	for (var i in doc.versions) {
+	    var v=doc.versions[i]
+	    var r=v.releases
+	    for (var j in v.releases) {
+		emit([r[j], doc.name], { version: i, title: v.Title })
+	    }
+	}
+    }
+}
+
 ddoc.lists.il = function(doc, req) {
     var row, first=true
     send('[ ')
@@ -165,6 +186,20 @@ ddoc.lists.id1 = function(doc, req) {
 	if (!row.id) continue
 	if (first) first=false; else send(",")
 	send(JSON.stringify(row.key[1]) + ":" + JSON.stringify(row.value))
+    }
+    send(" }")
+}
+
+ddoc.lists.desc = function(doc, req) {
+    var row, first=true
+    send('{ ')
+    while (row = getRow()) {
+	if (!row.id) continue
+	if (first) first=false; else send(",")
+	send(JSON.stringify(row.key) + ": { " +
+	     "\"version\": " + JSON.stringify(row.value.latest) + ", " +
+	     "\"title\": " + JSON.stringify(row.value.title) +
+	     " }")
     }
     send(" }")
 }

@@ -22,6 +22,7 @@ var couchapp = require('couchapp')
 // - release, packages and their versions for each R release
 // - releasedesc, packages and their versions for each R release,
 //   include more data in addition to the version number
+// - topdeps, number of reverse dependencies, ordered
 
 // Lists
 // =====
@@ -35,6 +36,7 @@ var couchapp = require('couchapp')
 // - id1, put rows in an dictionary, use key[1] as key
 // - il, put rows in a list
 // - desc, minimal description of a package version
+// - top20, sort according to value and show the top 20 with key[0] as key
 
 // API
 // ===
@@ -59,6 +61,8 @@ ddoc = {
     , { from: '/-/releasedesc/:version', to: '_list/id1/releasedesc',
         query: { "start_key":[":version"], 
 		 "end_key":[":version",{}] } }
+    , { from: '/-/topdeps', to: '_list/top20/topdeps',
+        query: { "group_level": "1" } }
     , { from: '/:pkg', to: '_show/package/:pkg' }
     , { from: '/:pkg/:version', to: '_show/package/:pkg' }
     ]
@@ -157,6 +161,33 @@ ddoc.views.releasedesc = {
     }
 }
 
+ddoc.views.topdeps = {
+    map: function(doc) {
+	if (doc.type && doc.type != "package") return
+	if (doc.archived) return
+	var base=["base", "compiler", "datasets", "graphics", "grDevices",
+		  "grid", "methods", "parallel", "splines", "stats",
+		  "stats4", "tcltk"]
+	var reported=[]
+	var latest = doc.versions[doc.latest]
+	var dep_fields = [ "Depends", "Imports", "Suggests", "Enhances",
+			   "LinkingTo" ]
+	for (var f in dep_fields) {
+            var ff=dep_fields[f]
+	    if (ff in latest) {
+		for (var p in latest[ff]) {
+		    if (p != "R" && reported.indexOf(p) < 0 &&
+		       base.indexOf(p) < 0) {
+			reported = reported.concat(p)
+			emit([p, doc._id], 1)
+		    }
+		}
+	    }
+	}
+    },
+    reduce: '_sum'
+}
+
 ddoc.lists.il = function(doc, req) {
     var row, first=true
     send('[ ')
@@ -177,6 +208,25 @@ ddoc.lists.id = function(doc, req) {
 	send(JSON.stringify(row.key) + ":" + JSON.stringify(row.value))
     }
     send(" }")
+}
+
+// NOTE: don't need to sort everything, just find the top 20
+ddoc.lists.top20 = function(doc, req) {
+    var row, first=true
+    var data = []
+    while(row = getRow()) {
+	data.push(row);
+    }
+    data.sort(function(a, b){
+	return a.value - b.value;
+    }).reverse();
+    send('[ ')
+    for(i in data.slice(0, 20)) {
+	if (first) first=false; else send(",")
+	send("{ " + JSON.stringify(data[i].key[0]) + ': ' +
+	     JSON.stringify(data[i].value) + " } ");
+    }
+    send(" ]")
 }
 
 ddoc.lists.id1 = function(doc, req) {

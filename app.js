@@ -167,7 +167,7 @@ ddoc.views.topdeps = {
 	if (doc.archived) return
 	var base=["base", "compiler", "datasets", "graphics", "grDevices",
 		  "grid", "methods", "parallel", "splines", "stats",
-		  "stats4", "tcltk"]
+		  "stats4", "tcltk", "utils"]
 	var reported=[]
 	var latest = doc.versions[doc.latest]
 	var dep_fields = [ "Depends", "Imports", "Suggests", "Enhances",

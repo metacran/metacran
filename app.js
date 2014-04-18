@@ -36,7 +36,7 @@ var couchapp = require('couchapp')
 // - id1, put rows in an dictionary, use key[1] as key
 // - il, put rows in a list
 // - desc, minimal description of a package version
-// - top20, sort according to value and show the top 20 with key[0] as key
+// - top20, sort according to value and show the top 20 with key[1] as key
 
 // API
 // ===
@@ -61,8 +61,9 @@ ddoc = {
     , { from: '/-/releasedesc/:version', to: '_list/id1/releasedesc',
         query: { "start_key":[":version"], 
 		 "end_key":[":version",{}] } }
-    , { from: '/-/topdeps', to: '_list/top20/topdeps',
-        query: { "group_level": "1" } }
+    , { from: '/-/topdeps/:version', to: '_list/top20/topdeps',
+        query: { "group_level": "2", "start_key":[":version"],
+		 "end_key":[":version",{}] } }
     , { from: '/:pkg', to: '_show/package/:pkg' }
     , { from: '/:pkg/:version', to: '_show/package/:pkg' }
     ]
@@ -164,22 +165,33 @@ ddoc.views.releasedesc = {
 ddoc.views.topdeps = {
     map: function(doc) {
 	if (doc.type && doc.type != "package") return
-	if (doc.archived) return
+	if (!doc.versions) return
 	var base=["base", "compiler", "datasets", "graphics", "grDevices",
 		  "grid", "methods", "parallel", "splines", "stats",
 		  "stats4", "tcltk", "utils"]
-	var reported=[]
-	var latest = doc.versions[doc.latest]
 	var dep_fields = [ "Depends", "Imports", "Suggests", "Enhances",
 			   "LinkingTo" ]
-	for (var f in dep_fields) {
-            var ff=dep_fields[f]
-	    if (ff in latest) {
-		for (var p in latest[ff]) {
-		    if (p != "R" && reported.indexOf(p) < 0 &&
-		       base.indexOf(p) < 0) {
-			reported = reported.concat(p)
-			emit([p, doc._id], 1)
+
+	for (var i in doc.versions) {
+	    var ver = doc.versions[i]
+	    var rels = ver.releases || []
+	    if (i == doc.latest && !doc.archived) {
+		rels=rels.concat("devel")
+	    }
+	    if (rels.length==0) continue
+	    var reported=[]
+	    for (var f in dep_fields) {
+		var ff=dep_fields[f]
+		if (ff in ver) {
+		    for (var p in ver[ff]) {
+			if (p != "R" && reported.indexOf(p) < 0 &&
+			    base.indexOf(p) < 0) {
+			    reported = reported.concat(p)
+			    for (var r in rels) {
+				var rel=rels[r]
+				emit([rel, p, doc._id], 1)
+			    }
+			}
 		    }
 		}
 	    }
@@ -223,7 +235,7 @@ ddoc.lists.top20 = function(doc, req) {
     send('[ ')
     for(i in data.slice(0, 20)) {
 	if (first) first=false; else send(",")
-	send("{ " + JSON.stringify(data[i].key[0]) + ': ' +
+	send("{ " + JSON.stringify(data[i].key[1]) + ': ' +
 	     JSON.stringify(data[i].value) + " } ");
     }
     send(" ]")

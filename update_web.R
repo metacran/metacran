@@ -3,7 +3,7 @@ library(jsonlite)
 library(httr)
 
 db <- "http://rpkg.igraph.org"
-repo <- "https://github.com/cran/cran.github.io.git"
+repo <- "git@github.com:cran/cran.github.io.git"
 
 if (!file.exists("_build")) {
   cmd <- paste("git clone --branch source --depth 1", repo, "_build")

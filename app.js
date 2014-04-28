@@ -36,6 +36,7 @@ var couchapp = require('couchapp')
 // - id1, put rows in an dictionary, use key[1] as key
 // - il, put rows in a list
 // - desc, minimal description of a package version
+// - latest, most recent version of the package(s)
 // - top20, sort according to value and show the top 20 with key[1] as key
 
 // API
@@ -50,6 +51,7 @@ ddoc = {
     [ { from: "/", to: "../.." }
     , { from: '/-/all', to: '_list/id/active' }
     , { from: '/-/desc', to: '_list/desc/active' }
+    , { from: '/-/latest', to: '_list/latest/active' }
     , { from: '/-/allall', to: '_list/id/packages' }
     , { from: '/-/pkgreleases', to: '_list/il/pkgreleases' }
     , { from: '/-/archivals', to: '_list/il/archivals' }
@@ -262,6 +264,19 @@ ddoc.lists.desc = function(doc, req) {
 	     "\"version\": " + JSON.stringify(row.value.latest) + ", " +
 	     "\"title\": " + JSON.stringify(row.value.title) +
 	     " }")
+    }
+    send(" }")
+}
+
+ddoc.lists.latest = function(doc, req) {
+    var row, first=true
+    send('{ ')
+    while (row = getRow()) {
+	var latest=row.value.latest
+	if (!row.id) continue
+	if (first) first=false; else send(",")
+	send(JSON.stringify(row.key) + ": " +
+	     JSON.stringify(row.value.versions[latest]))
     }
     send(" }")
 }

@@ -22,6 +22,8 @@ var couchapp = require('couchapp')
 // - release, packages and their versions for each R release
 // - releasedesc, packages and their versions for each R release,
 //   include more data in addition to the version number
+// - releasepkgs, package versions for each R release
+//   include full record (for that version)
 // - topdeps, number of reverse dependencies, ordered
 
 // Lists
@@ -57,6 +59,9 @@ ddoc = {
     , { from: '/-/archivals', to: '_list/il/archivals' }
     , { from: '/-/events', to: '_list/il/events' }
     , { from: '/-/releases', to: '_list/il/releases' }
+    , { from: '/-/releasepkgs/:version', to: '_list/id1/releasepkgs',
+	query: { "start_key":[":version"],
+		 "end_key":[":version",{}] } }
     , { from: '/-/release/:version', to: '_list/id1/release', 
         query: { "start_key":[":version"],
 		 "end_key":[":version",{}] } }
@@ -159,6 +164,20 @@ ddoc.views.releasedesc = {
 	    var r=v.releases
 	    for (var j in v.releases) {
 		emit([r[j], doc.name], { version: i, title: v.Title })
+	    }
+	}
+    }
+}
+
+ddoc.views.releasepkgs = {
+    map: function(doc) {
+	if (doc.type && doc.type != "package") return
+	if (!doc.versions) return
+	for (var i in doc.versions) {
+	    var v=doc.versions[i]
+	    var r=v.releases
+	    for (var j in v.releases) {
+		emit([r[j], doc.name], doc.versions[i])
 	    }
 	}
     }

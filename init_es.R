@@ -74,9 +74,14 @@ concat_dep_field <- function(field) {
   paste0(nm, field, collapse=", ")
 }
 
-es_format <- function(pkg) {
+es_format <- function(pkg, deps) {
   pkg$releases <- NULL
   if (tolower(pkg$date) == "invalid date") { pkg$date <- NULL }
+  if (pkg$Package %in% names(deps)) {
+    pkg$revdeps <- deps[[pkg$Package]]+1
+  } else {
+    pkg$revdeps <- 1
+  }
   non_dep <- setdiff(names(pkg), dep_fields)
   for (df in intersect(names(pkg), dep_fields)) {
     pkg[[df]] <- concat_dep_field(pkg[[df]])
@@ -86,10 +91,10 @@ es_format <- function(pkg) {
   gsub('\\\\[^"]', " ", js)
 }
 
-es_add_docs <- function(index, packages, chunk_size=30) {
+es_add_docs <- function(index, packages, deps, chunk_size=30) {
   chunks <- split(packages, ceiling(seq_along(packages)/chunk_size))
   for (chunk in chunks) {
-    jpkgs <- sapply(chunk, es_format)
+    jpkgs <- sapply(chunk, es_format, deps=deps)
     heads <- paste0('{ "create": { "_id": "',
                     unname(sapply(chunk, "[[", "Package")),
                     '" } }')
@@ -132,8 +137,11 @@ for (rel in c("devel", releases)) {
   pkgs <- fromJSON(content(GET(url), as="text"))
   pkgs <- rev(pkgs)
   pkgs <- rev(pkgs[!duplicated(names(pkgs))])
+  deps <- fromJSON(content(GET(paste0("http://rpkg.igraph.org/-/deps/",
+                                      rel)), as="text"))
+  deps <- unlist(deps)
   ind <- sub("${version}", rel, index, fixed=TRUE)
-  es_add_docs(ind, pkgs)
+  es_add_docs(ind, pkgs, deps)
 }
 
 ## Example CouchDB document:

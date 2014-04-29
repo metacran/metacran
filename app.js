@@ -71,6 +71,9 @@ ddoc = {
     , { from: '/-/topdeps/:version', to: '_list/top20/topdeps',
         query: { "group_level": "2", "start_key":[":version"],
 		 "end_key":[":version",{}] } }
+    , { from: '/-/deps/:version', to: '_list/id1/topdeps',
+        query: { "group_level": "2", "start_key":[":version"],
+		 "end_key":[":version",{}] } }
     , { from: '/:pkg', to: '_show/package/:pkg' }
     , { from: '/:pkg/:version', to: '_show/package/:pkg' }
     ]
@@ -266,7 +269,6 @@ ddoc.lists.id1 = function(doc, req) {
     var row, first=true
     send('{ ')
     while (row = getRow()) {
-	if (!row.id) continue
 	if (first) first=false; else send(",")
 	send(JSON.stringify(row.key[1]) + ":" + JSON.stringify(row.value))
     }

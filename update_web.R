@@ -49,3 +49,7 @@ for (myrel in rel) {
   source("update_topdeps.R")
   cat("DONE\n")  
 }
+
+cat("Updating search pages...")
+source("update_search.R")
+cat("DONE\n")

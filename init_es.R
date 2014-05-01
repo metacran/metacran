@@ -1,7 +1,4 @@
 
-library(httr)
-library(jsonlite)
-
 ## Initialize the ElasticSearch database
 ## Each R version will be in a separate index,
 ## this makes it easy to search them individually.
@@ -9,112 +6,14 @@ library(jsonlite)
 ## This also means that versions that are not part of
 ## any R/CRAN release are not searched at all.
 
-URL <- "http://rpkg.igraph.org:9200"
-index <- "cran-${version}"
-user_pw <- readLines("es_user.txt")[1]
-user <- strsplit(user_pw, ":")[[1]][1]
-pass <- strsplit(user_pw, ":")[[1]][2]
+source("es_common.R")
 
-mapping <- '{
-  "mappings": {
-    "package": {
-      "properties": {
-        "Package": {
-          "type": "string",
-          "index": "not_analyzed"
-        },
-        "Title": {
-          "type": "string",
-          "analyzer": "english"
-        },
-        "Version": {
-          "type": "string",
-          "index": "not_analyzed"
-        },
-        "Author": {
-          "type": "string"
-        },
-        "Maintainer": {
-          "type": "string"
-        },
-        "Description": {
-          "type": "string",
-          "analyzer": "english"
-        },
-        "License": {
-          "type": "string",
-          "index": "not_analyzed"
-        },
-        "URL": {
-          "type": "string",
-          "analyzer": "simple"
-        },
-        "BugReports": {
-          "type": "string",
-          "analyzer": "simple"
-        },
-        "date": {
-          "type": "date"
-        },
-        "Date": {
-          "type": "string"
-        }
-      }
-    }
-  }
-}
-'
+## This is where we are in the couchdb database
+## Ideally CouchDB should be read-only while we
+## are doing this
 
-dep_fields <- c("Depends", "Imports", "Suggests", "Enhances", "LinkingTo")
+c_seq <- last_coach_update()
 
-concat_dep_field <- function(field) {
-  nm <- names(field)
-  field <- sub("*", "", field, fixed=TRUE)
-  field <- sub("^(..*)$", " (\\1)", field)
-  paste0(nm, field, collapse=", ")
-}
-
-es_format <- function(pkg, deps) {
-  pkg$releases <- NULL
-  if (tolower(pkg$date) == "invalid date") { pkg$date <- NULL }
-  if (pkg$Package %in% names(deps)) {
-    pkg$revdeps <- deps[[pkg$Package]]+1
-  } else {
-    pkg$revdeps <- 1
-  }
-  non_dep <- setdiff(names(pkg), dep_fields)
-  for (df in intersect(names(pkg), dep_fields)) {
-    pkg[[df]] <- concat_dep_field(pkg[[df]])
-  }  
-  pkg <- lapply(pkg, unbox)
-  js <- gsub("\\n", " ", toJSON(pkg), fixed=TRUE)
-  gsub('\\\\[^"]', " ", js)
-}
-
-es_add_docs <- function(index, packages, deps, chunk_size=30) {
-  chunks <- split(packages, ceiling(seq_along(packages)/chunk_size))
-  for (chunk in chunks) {
-    jpkgs <- sapply(chunk, es_format, deps=deps)
-    heads <- paste0('{ "create": { "_id": "',
-                    unname(sapply(chunk, "[[", "Package")),
-                    '" } }')
-    body <- paste0(paste(heads, jpkgs, sep="\n", collapse="\n"), "\n")
-    res <- PUT(paste0(URL, "/", index, "/package/_bulk"),
-               body=body, authenticate(user, pass, type="basic"))
-    stat <- sapply(lapply(fromJSON(content(res, as="text"),
-                                   simplifyVector=FALSE)$items, "[[",
-                          "create"), "[[", "status")
-    if (any(stat != 201)) { stop("Error") }
-  }
-}
-
-## Supported releases
-get_versions <- function() {
-  url <- "http://rpkg.igraph.org"
-  vv <- content(GET(paste0(url, "/-/releases")), as="text")
-  js <- fromJSON(vv)
-  js$version
-}
 releases <- get_versions()
 
 ## Create indexes, and 'package' types
@@ -143,6 +42,11 @@ for (rel in c("devel", releases)) {
   ind <- sub("${version}", rel, index, fixed=TRUE)
   es_add_docs(ind, pkgs, deps)
 }
+
+## Add couchdb-ES stamp
+stop_for_status(PUT(paste0(URL, "/meta/meta/couch-seq"),
+                    body=paste0(' { "value": ', c_seq, ' }'),
+                    authenticate(user, pass, type="basic")))
 
 ## Example CouchDB document:
 ## 

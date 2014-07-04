@@ -1,5 +1,5 @@
 
-URL <- "http://r-pkg.org:9200"
+URL <- "http://search.r-pkg.org:9200"
 index <- "cran-${version}"
 user_pw <- readLines("es_user.txt")[1]
 user <- strsplit(user_pw, ":")[[1]][1]
@@ -50,7 +50,7 @@ es_add_docs <- function(index, packages, deps, chunk_size=30) {
 library(httr)
 library(jsonlite)
 
-URL <- "http://r-pkg.org:9200"
+URL <- "http://search.r-pkg.org:9200"
 index <- "cran-${version}"
 user_pw <- readLines("es_user.txt")[1]
 user <- strsplit(user_pw, ":")[[1]][1]
@@ -151,7 +151,7 @@ es_add_docs <- function(index, packages, deps, chunk_size=30) {
 
 ## Supported releases
 get_versions <- function() {
-  url <- "http://r-pkg.org"
+  url <- "http://db.r-pkg.org"
   vv <- content(GET(paste0(url, "/-/releases")), as="text")
   js <- fromJSON(vv)
   js$version

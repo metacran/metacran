@@ -10,7 +10,7 @@ c_seq <- new_docs_res$last_seq
 ## This is not right, if we change older releases,
 ## but that does not happen too often, and it will
 ## be corrected eventually by another means
-deps <- fromJSON(content(GET("http://r-pkg.org/-/deps/devel"),
+deps <- fromJSON(content(GET("http://db.r-pkg.org/-/deps/devel"),
                          as="text"))
 deps <- unlist(deps)
 

@@ -151,7 +151,7 @@ es_add_docs <- function(index, packages, deps, chunk_size=30) {
 
 ## Supported releases
 get_versions <- function() {
-  url <- "http://db.r-pkg.org"
+  url <- "http://crandb.r-pkg.org"
   vv <- content(GET(paste0(url, "/-/releases")), as="text")
   js <- fromJSON(vv)
   js$version

@@ -29,14 +29,14 @@ for (rel in c(releases, "devel")) {
 for (rel in c("devel", releases)) {
   print(rel)
   if (rel == "devel") {
-    url <- "http://db.r-pkg.org/-/latest"
+    url <- "http://crandb.r-pkg.org/-/latest"
   } else {
-    url <- paste0("http://db.r-pkg.org/-/releasepkgs/", rel)
+    url <- paste0("http://crandb.r-pkg.org/-/releasepkgs/", rel)
   }  
   pkgs <- fromJSON(content(GET(url), as="text"))
   pkgs <- rev(pkgs)
   pkgs <- rev(pkgs[!duplicated(names(pkgs))])
-  deps <- fromJSON(content(GET(paste0("http://db.r-pkg.org/-/deps/",
+  deps <- fromJSON(content(GET(paste0("http://crandb.r-pkg.org/-/deps/",
                                       rel)), as="text"))
   deps <- unlist(deps)
   ind <- sub("${version}", rel, index, fixed=TRUE)

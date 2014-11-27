@@ -2,7 +2,7 @@
 library(jsonlite)
 library(httr)
 
-db <- "http://db.r-pkg.org"
+db <- "http://crandb.r-pkg.org"
 repo <- "git@github.com:cran/cran.github.io.git"
 
 if (!file.exists("_build")) {

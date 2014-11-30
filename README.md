@@ -1,52 +1,33 @@
-## Unofficial read-only mirror of CRAN R packages on github
 
-The benefits being:
-- Easy access to the source code, including diffs between versions.
-- Easy forking and maintaining patched versions of packages.
-- Watching new versions of packages
-- Easy installation of old package versions via `install_github` from
-  the `devtools` package. (Although this is already possible with
-  the `install_version` function of the same package.)
+# `metacran` — Tooling around CRAN R packages
 
-## The machinery
+`metacran` is a collection of projects to allow better tooling
+around CRAN R packages. It contains a number of projects.
+The following ones are stably working and can be considered
+beta software:
 
-We keep a local mirror of CRAN source packages. A couple of times a
-day we rsync the mirror and compare the old and new `PACKAGES` files.
-We add all new versions of the packages that were updated or
-introduced in the new `PACKAGES` file. Simple, huh?
+* [CRAN @ github](https://github.com/cran), read-only mirror of CRAN at github.
+* [`crandb`](https://github.com/metacran/crandb),
+  a database of CRAN R packages, with an HTTP API, and an
+  R package to access it from R.
+* [CRAN package search](https://github.com/metacran/search), 
+  based on `crandb`. It is online at http://metacran.github.io/search.
+* [`seer`](https://github.com/metacran/seer), R package
+  to search for CRAN packages.
+* [`r-builder`](https://github.com/metacran/r-buider)
+  Scripts to use Travis or another CI to
+  build and check R packages with various R versions, including
+  R-devel.
+* `cranlogs` A [database](https://github.com/metacran/cranlogs.app)
+  and [R package](https://github.com/metacran/cranlogs) for daily R package
+  download counts from the RStudio CRAN mirror.
+* [`rversions`] An R package to query R versions and their
+  release dates from the R project SVN repository.
 
-## Some details
+`metacran` also contains some experimental packages and tools:
 
-Every package is in its own repository. Each new package version
-generates a new commit to the package repository, with the version
-number in the commit message. There is also a tag for each commit, the
-tag is simply the version number.
-
-Author dates and committer dates are set to the date in the
-DESCRIPTION file.
-
-## cran.github.io
-
-This is in the works.
-
-It will be a website including some info about the packages. Updated
-every time one of the repositories are updated.
-
-The idea is to have a static website, with searching supported by some
-client-side search engine, or google custom search.
-
-It is not completely clear what would be on the website, though. Maybe
-one page per package, and some summary pages. Although the package
-pages can also be on individual websites,
-http://cran.github.io/<package>.
-
-Some ideas about useful content:
-- List of new packages. This is already on cranberries, though.
-- Documentation for each package, already on inside-r.
-- NEWS files.
-- Some search engine that can search in `DESCRIPTION` files.
-- Some search engine that searches in the package contents (?).
-- Some search engine that searches in functions and data sets
-  (there are already several websites like this....)
-
-
+* [`spareserver`](https://github.com/metacran/spareserver)
+  R package to fallback to another web server if the main one
+  is not responding.
+* [`cranny`](https://github.com/metacran/cranny)
+  `packer` templates to build the metacran servers.

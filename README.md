@@ -21,7 +21,8 @@ beta software:
 * `cranlogs` A [database](https://github.com/metacran/cranlogs.app)
   and [R package](https://github.com/metacran/cranlogs) for daily R package
   download counts from the RStudio CRAN mirror.
-* [`rversions`] An R package to query R versions and their
+* [`rversions`](https://github.com/metacran/rversions)
+  An R package to query R versions and their
   release dates from the R project SVN repository.
 
 `metacran` also contains some experimental packages and tools:
@@ -30,4 +31,4 @@ beta software:
   R package to fallback to another web server if the main one
   is not responding.
 * [`cranny`](https://github.com/metacran/cranny)
-  `packer` templates to build the metacran servers.
+  [`packer`](https://packer.io/) templates to build the metacran servers.

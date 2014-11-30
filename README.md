@@ -14,7 +14,7 @@ beta software:
   based on `crandb`. It is online at http://metacran.github.io/search.
 * [`seer`](https://github.com/metacran/seer), R package
   to search for CRAN packages.
-* [`r-builder`](https://github.com/metacran/r-buider)
+* [`r-builder`](https://github.com/metacran/r-builder)
   Scripts to use Travis or another CI to
   build and check R packages with various R versions, including
   R-devel.

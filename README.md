@@ -6,12 +6,14 @@ around CRAN R packages. It contains a number of projects.
 The following ones are stably working and can be considered
 beta software:
 
+* [Web site](http://www.r-pkg.org) to browse and search CRAN packages.
 * [CRAN @ github](https://github.com/cran), read-only mirror of CRAN at github.
 * [`crandb`](https://github.com/metacran/crandb),
   a database of CRAN R packages, with an HTTP API, and an
   R package to access it from R.
 * [CRAN package search](https://github.com/metacran/search), 
-  based on `crandb`. It is online at http://metacran.github.io/search.
+  based on `crandb`. This is now included in the Metacran web site at
+  http://www.r-pkg.org.
 * [`seer`](https://github.com/metacran/seer), R package
   to search for CRAN packages.
 * [`r-builder`](https://github.com/metacran/r-builder)
